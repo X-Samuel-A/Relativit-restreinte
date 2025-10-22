@@ -3,4 +3,4 @@ Flèches pour bouger. Au fil du mouvement on remarque les distorsions d'espace-t
 
 APPUYEZ SUR X POUR COMMENCER  
 
-démo : https://jeanbombeurre.github.io/Relativit-restreinte/relatRestreinte1.html
+démo : https://X-Samuel-A.github.io/Relativit-restreinte/relatRestreinte1.html

@@ -1,7 +1,9 @@
 <html>
 <body style="background-color:grey">
 <center>
-<canvas id="canvas" width=800 height=600 />
+<canvas id="canvas" width=800 height=600 ></canvas>
+<br/>Prise en compte du retard visuel : 
+<input type=checkbox value=unchecked onchange="AvecRetardLumiere=!this.checked" />
 </center>
 <script>
 
@@ -11,9 +13,12 @@ t'=g(t-xv/c²)    -->constance de t-xv/c²
 */
 let canvas=document.getElementById("canvas")
 let ctx=canvas.getContext("2d")
-const W=800
-const H=600
+let W=800
+let H=600
 const zoom=30
+let AvecRetardLumiere=false
+
+let bgcolor="#505050"
 
 function eff(){
 	ctx.fillStyle="black"
@@ -48,15 +53,18 @@ function gamma(v){
 }
 class Line{
 	static list=[]
-	constructor(vie, col="white"){//vie: fonction de t_origine, a, b: bornes
+	constructor(vie, col="white", putinlist=true){//vie: fonction de t_origine, a, b: bornes
 		this.vie=vie
 		this.col=col;
-		Line.list.push(this)
+		if (putinlist) Line.list.push(this)
 	}
 	solveT(v, pos, t_O){//v: ma vitesse pour O, pos, t_O:temps pour 0
 	//dichotomie
 	//je veux trouver t-xv/c²=0 relatif à cur
-		let goup=t=>(t-t_O - this.vie(t).moins(pos).sc(v) < 0)
+		let goup;
+		if(AvecRetardLumiere) goup=t=>(t-t_O - this.vie(t).moins(pos).sc(v) < 0)
+		else goup=t=>((t-t_O)**2 < this.vie(t).moins(pos).n2())
+		
 		let inut=1;
 		let a,b;
 		if(goup(t_O)){
@@ -70,7 +78,7 @@ class Line{
 			a=-inut;
 			b=0
 		}
-		while(b-a>0.0005){
+		while(b-a>0.00005){
 			let m=(b+a)/2
 			if(goup(t_O+m)) a=m
 			else b=m
@@ -94,35 +102,38 @@ function actuvit(){
 	if(vit.sc(vit)>0.95) vit=vit.u().f(Math.sqrt(0.95))
 }
 const log= console.log;
-let avspecial=new V(0,0)
+const axes={z:-1, ex:-1, ey:-1}
 function affall(){
+	W  = window.innerWidth;
+  	H = window.innerHeight-100;
+	if(H!=ctx.canvas.height)ctx.canvas.height=H
+	if(W!=ctx.canvas.width)ctx.canvas.width=W
+	
 	eff()
-	let ex,ey,z;
+	
+	let ex=axes.ex.getX(vit, pos, t_O)
+	let ey=axes.ey.getX(vit, pos, t_O)
+	let z=axes.z.getX(vit, pos, t_O)
+	ctx.strokeStyle=bgcolor
+	for(let x=-20;x<20;x+=2){
+		let a=z.plus(ex.moins(z).f(x)).plus(ey.moins(z).f(20))
+		let b=z.plus(ex.moins(z).f(x)).plus(ey.moins(z).f(-20))
+		
+		line(a.x,a.y,b.x,b.y)		
+	}
+	for(let y=-20;y<20;y+=2){
+		let a=z.plus(ex.moins(z).f(20)).plus(ey.moins(z).f(y))
+		let b=z.plus(ex.moins(z).f(-20)).plus(ey.moins(z).f(y))
+		line(a.x,a.y,b.x,b.y)		
+	}
+	
+	
+	
 	for(let i of Line.list){
 		let see=i.getX(vit,pos,t_O)
 		if(i.col!=-1)dot(see.x, see.y,i.col)
-		if(i.special){
-			console.log(Math.round(10000*avspecial.moins(see).n2()/dt/dt))
-			
-			avspecial=see
-
-		}
-		if(i.ex) ex=see;
-		if(i.z) z=see;
-		if(i.ey) ey=see;
-		
 	}
-	for(let x=-10;x<11;x+=2){
-		for(let y=-10;y<11;y+=2){
-			let a=z.plus(ex.moins(z).f(x)).plus(ey.moins(z).f(y))
-			let b=a.plus(ex.moins(z).f(2))
-			let c=a.plus(ey.moins(z).f(2))
-			ctx.strokeStyle="lightgrey"
-			line(a.x,a.y,b.x,b.y)
-			line(a.x,a.y,c.x,c.y)
-			
-		}
-	}
+	
 	
 	ctx.strokeStyle="lightgreen"
 	line(0,1,0,-1)
@@ -131,38 +142,41 @@ function affall(){
 }
 function genereLines(){
 	//origine
+	
+	
 	let static=pos=>(t=>pos)
-	for(let i=0;i<12;i++){
-		new Line(static(new V(Math.cos(i/12*2*Math.PI),Math.sin(i/12*2*Math.PI))))
-	}
-	for(let i=0;i<10;i++){
-		new Line(static(new V(3,i/2)))
-	}
+	
 	let u= t=>new V(Math.cos(t),Math.sin(t))
 	let tourne=(r,theta)=>(t=>u(t/3-theta).f(r))
-	for(let r=0;r<3;r+=0.2){
+	
+	for(let x=-10;x<11;x+=2){ // grille d'horloges
+		for(let y=-10;y<11;y+=2){
+			new Line((t=>new V(x, y).plus(u(t).f(0.5))), ctx.strokeStyle=bgcolor) // vitesses c/2
+		}
+	}
+	
+	for(let r=0.2;r<3;r+=0.2){
 		new Line(tourne(r,0),"red")
 		new Line(tourne(r,2*Math.PI/5),"lightblue")
 		new Line(tourne(r,-2*Math.PI/5),"lightgreen")
 		new Line(tourne(r,4*Math.PI/5),"yellow")
 		new Line(tourne(r,-4*Math.PI/5),"pink")
-		
 	}
 	//light
 	let rebond= (p,u,r) => (t=>(t%(2*r)<r)?p.plus(u.f(t%r)):p.plus(u.f(r)).moins(u.f(t%r)))
-	new Line(rebond(new V(0,3), new V(1,0), 10))
-	new Line(rebond(new V(-3,3), new V(1,-1).u(), 10))
-	Line.list[Line.list.length-1].special=true;
-
-	new Line(static(new V(0,0)),-1).z=true;
-	new Line(static(new V(1,0)),-1).ex=true;
-	new Line(static(new V(0,1)),-1).ey=true;
 	
-	new Line(rebond(new V(40,3), new V(1,0), 10))
-
+	for(let i=0;i<5;i+=0.1)
+		new Line(rebond(new V(7+i, -2-2*i), new V(2,1).u(), 10))
+		
 	for(let i=0;i<30;i++){
-		new Line(rebond(new V(0,1), u(i/30*2*Math.PI), 10), "red")
+		new Line(rebond(new V(0,7), u(i/30*2*Math.PI), 10), "red")
 	}
+	
+	axes.z=new Line(static(new V(0,0)),-1, false)// axes de base
+	axes.ex=new Line(static(new V(1,0)),-1, false);
+	axes.ey=new Line(static(new V(0,1)),-1, false);
+	
+	
 
 }
 const dt=0.1
@@ -181,17 +195,22 @@ let go=0
 let t_O=0;
 let g=1;
 let tM=0;
+
 function main(){
 	actuvit()
 	g=gamma(vit)
+	
 	const curdt=dt*g
 	tM+=dt
 	t_O+=curdt //////// temps actuel selon O
 	pos=pos.plus(vit.f(curdt))
 
+
 	affall()
 
+	//resize canvas
 	
+  	
 	if(!go) return
 	window.requestAnimationFrame(main)
 }
